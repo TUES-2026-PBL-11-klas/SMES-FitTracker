@@ -65,6 +65,56 @@ class User(UserMixin, db.Model):
         return round(bmr * multipliers.get(self.activity_level, 1.2))
 
 
+    workouts = db.relationship("WorkoutPlan", backref="user", lazy="dynamic")
+
+
+class WorkoutPlan(db.Model):
+    __tablename__ = "workout_plans"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    split_name = db.Column(db.String(100), nullable=False)
+    goal = db.Column(db.String(50), nullable=False)
+    days_per_week = db.Column(db.Integer, nullable=False)
+    rest_between_sets = db.Column(db.Integer, nullable=False)
+
+    days = db.relationship("WorkoutDay", backref="plan", lazy="select",
+                           cascade="all, delete-orphan",
+                           order_by="WorkoutDay.day_index")
+
+
+class WorkoutDay(db.Model):
+    __tablename__ = "workout_days"
+
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey("workout_plans.id"), nullable=False)
+    day_index = db.Column(db.Integer, nullable=False)  # 0-6 (Mon-Sun)
+    day_name = db.Column(db.String(20), nullable=False)
+    is_rest = db.Column(db.Boolean, default=False, nullable=False)
+    workout_name = db.Column(db.String(100), nullable=False)
+
+    exercises = db.relationship("WorkoutExercise", backref="day", lazy="select",
+                                cascade="all, delete-orphan",
+                                order_by="WorkoutExercise.order")
+
+
+class WorkoutExercise(db.Model):
+    __tablename__ = "workout_exercises"
+
+    id = db.Column(db.Integer, primary_key=True)
+    day_id = db.Column(db.Integer, db.ForeignKey("workout_days.id"), nullable=False)
+    order = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    is_cardio = db.Column(db.Boolean, default=False, nullable=False)
+    muscle_group = db.Column(db.String(50))
+    sets = db.Column(db.Integer)
+    reps = db.Column(db.Integer)
+    duration_min = db.Column(db.Integer)
+    is_completed = db.Column(db.Boolean, default=False, nullable=False)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))

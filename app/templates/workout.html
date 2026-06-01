@@ -2,7 +2,7 @@
 {% block title %} — Workout Plan{% endblock %}
 
 {% block content %}
-<div class="mt-3">
+<div class="mt-3 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
             <h2>Your Workout Plan</h2>
@@ -12,29 +12,99 @@
                 Rest: {{ plan.rest_between_sets }}s between sets
             </p>
         </div>
-        <a href="{{ url_for('main.workout_regenerate') }}" class="btn btn-outline-accent">Regenerate</a>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('main.workout_history') }}" class="btn btn-outline-secondary">History</a>
+            <a href="{{ url_for('main.workout_regenerate') }}" class="btn btn-outline-accent">Regenerate</a>
+        </div>
     </div>
 
+    <!-- Weekly Progress Overview -->
+    <div class="weekly-progress mb-4">
+        <div class="weekly-progress-header">
+            <h6 class="mb-0">Weekly Progress</h6>
+            {% set ns = namespace(total=0, done=0) %}
+            {% for day in plan.days %}
+                {% if not day.is_rest %}
+                    {% set ns.total = ns.total + day.exercises|length %}
+                    {% for ex in day.exercises %}
+                        {% if ex.is_completed %}{% set ns.done = ns.done + 1 %}{% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+            <span class="weekly-progress-count">{{ ns.done }}/{{ ns.total }} exercises</span>
+        </div>
+        <div class="weekly-dots">
+            {% for day in plan.days %}
+                {% if day.is_rest %}
+                    <div class="week-dot rest" title="{{ day.day_name }} — Rest">
+                        <span class="week-dot-label">{{ day.day_name[:3] }}</span>
+                        <div class="week-dot-circle rest-circle">R</div>
+                    </div>
+                {% else %}
+                    {% set day_total = day.exercises|length %}
+                    {% set day_done = day.exercises|selectattr('is_completed')|list|length %}
+                    <div class="week-dot" title="{{ day.day_name }} — {{ day_done }}/{{ day_total }}">
+                        <span class="week-dot-label">{{ day.day_name[:3] }}</span>
+                        <div class="week-dot-circle {% if day_done == day_total and day_total > 0 %}completed{% elif day_done > 0 %}partial{% endif %}"
+                             id="dot-{{ day.id }}">
+                            {% if day_done == day_total and day_total > 0 %}
+                                &#10003;
+                            {% else %}
+                                {{ day_done }}/{{ day_total }}
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Workout Days -->
     {% for day in plan.days %}
         {% if day.is_rest %}
             <div class="rest-day">
                 <strong>{{ day.day_name }}</strong> — Rest Day &#128524;
             </div>
         {% else %}
-            <div class="workout-day">
+            {% set day_total = day.exercises|length %}
+            {% set day_done = day.exercises|selectattr('is_completed')|list|length %}
+            <div class="workout-day" id="day-card-{{ day.id }}">
                 <div class="workout-day-header">
-                    <h5>{{ day.day_name }} — {{ day.workout_name }}</h5>
-                    <span class="badge-success">{{ day.exercises|length }} exercises</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="mb-0">{{ day.day_name }} — {{ day.workout_name }}</h5>
+                        {% if day_done == day_total and day_total > 0 %}
+                            <span class="day-complete-badge">&#10003; Complete</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="day-progress-mini">
+                            <div class="day-progress-bar">
+                                <div class="day-progress-fill" id="progress-{{ day.id }}"
+                                     style="width: {{ (day_done / day_total * 100) if day_total > 0 else 0 }}%"></div>
+                            </div>
+                            <span class="day-progress-text" id="progress-text-{{ day.id }}">{{ day_done }}/{{ day_total }}</span>
+                        </div>
+                        <button class="btn-reset" onclick="resetDay({{ day.id }})" title="Reset day">
+                            &#8635;
+                        </button>
+                    </div>
                 </div>
                 {% for ex in day.exercises %}
-                    <div class="exercise-row">
-                        <div>
-                            <span class="exercise-name">{{ ex.name }}</span>
-                            {% if not ex.is_cardio %}
-                                <span class="muscle-tag ms-2">{{ ex.muscle_group }}</span>
-                            {% else %}
-                                <span class="muscle-tag ms-2" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">Cardio</span>
-                            {% endif %}
+                    <div class="exercise-row {% if ex.is_completed %}exercise-done{% endif %}"
+                         id="exercise-{{ ex.id }}" onclick="toggleExercise({{ ex.id }})">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="exercise-check {% if ex.is_completed %}checked{% endif %}"
+                                 id="check-{{ ex.id }}">
+                                {% if ex.is_completed %}&#10003;{% endif %}
+                            </div>
+                            <div>
+                                <span class="exercise-name">{{ ex.name }}</span>
+                                {% if not ex.is_cardio %}
+                                    <span class="muscle-tag ms-2">{{ ex.muscle_group }}</span>
+                                {% else %}
+                                    <span class="muscle-tag ms-2" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">Cardio</span>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="exercise-detail">
                             {% if ex.is_cardio %}
@@ -49,4 +119,244 @@
         {% endif %}
     {% endfor %}
 </div>
+
+<style>
+    /* Weekly Progress */
+    .weekly-progress {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem;
+    }
+
+    .weekly-progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .weekly-progress-count {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .weekly-dots {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .week-dot {
+        flex: 1;
+        text-align: center;
+    }
+
+    .week-dot-label {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.4rem;
+    }
+
+    .week-dot-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--bg-dark);
+        border: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        transition: all 0.3s;
+    }
+
+    .week-dot-circle.completed {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        font-size: 1rem;
+    }
+
+    .week-dot-circle.partial {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .week-dot-circle.rest-circle {
+        border-color: var(--border);
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    /* Day progress bar */
+    .day-progress-mini {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .day-progress-bar {
+        width: 80px;
+        height: 6px;
+        background: var(--bg-dark);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .day-progress-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .day-progress-text {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        min-width: 30px;
+    }
+
+    .day-complete-badge {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        padding: 0.2em 0.7em;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .btn-reset {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+        border-color: var(--warning);
+        color: var(--warning);
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    /* Exercise checkbox */
+    .exercise-row {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .exercise-check {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+        font-size: 0.8rem;
+        color: transparent;
+    }
+
+    .exercise-check.checked {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+    }
+
+    .exercise-done {
+        opacity: 0.5;
+    }
+
+    .exercise-done .exercise-name {
+        text-decoration: line-through;
+    }
+</style>
+
+<script>
+    function toggleExercise(id) {
+        fetch(`/workout/toggle/${id}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                const row = document.getElementById(`exercise-${id}`);
+                const check = document.getElementById(`check-${id}`);
+
+                if (data.completed) {
+                    row.classList.add('exercise-done');
+                    check.classList.add('checked');
+                    check.innerHTML = '&#10003;';
+                } else {
+                    row.classList.remove('exercise-done');
+                    check.classList.remove('checked');
+                    check.innerHTML = '';
+                }
+
+                // Update day progress
+                updateDayProgress(row, data);
+            });
+    }
+
+    function updateDayProgress(row, data) {
+        // Find the parent workout-day card
+        const card = row.closest('.workout-day');
+        if (!card) return;
+        const dayId = card.id.replace('day-card-', '');
+
+        const fill = document.getElementById(`progress-${dayId}`);
+        const text = document.getElementById(`progress-text-${dayId}`);
+        if (fill) fill.style.width = `${(data.day_done / data.day_total * 100)}%`;
+        if (text) text.textContent = `${data.day_done}/${data.day_total}`;
+
+        // Update weekly dot
+        const dot = document.getElementById(`dot-${dayId}`);
+        if (dot) {
+            dot.classList.remove('completed', 'partial');
+            if (data.day_done === data.day_total && data.day_total > 0) {
+                dot.classList.add('completed');
+                dot.innerHTML = '&#10003;';
+            } else if (data.day_done > 0) {
+                dot.classList.add('partial');
+                dot.innerHTML = `${data.day_done}/${data.day_total}`;
+            } else {
+                dot.innerHTML = `0/${data.day_total}`;
+            }
+        }
+
+        // Update header badge
+        const header = card.querySelector('.workout-day-header .d-flex');
+        let badge = header.querySelector('.day-complete-badge');
+        if (data.day_done === data.day_total && data.day_total > 0) {
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'day-complete-badge';
+                badge.innerHTML = '&#10003; Complete';
+                header.appendChild(badge);
+            }
+        } else if (badge) {
+            badge.remove();
+        }
+    }
+
+    function resetDay(dayId) {
+        fetch(`/workout/reset-day/${dayId}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(() => location.reload());
+    }
+</script>
 {% endblock %}
