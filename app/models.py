@@ -64,7 +64,6 @@ class User(UserMixin, db.Model):
         }
         return round(bmr * multipliers.get(self.activity_level, 1.2))
 
-
     workouts = db.relationship("WorkoutPlan", backref="user", lazy="dynamic")
 
 
