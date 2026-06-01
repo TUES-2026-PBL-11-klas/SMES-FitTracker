@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %} — Register{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h2 class="card-title text-center mb-2">Create Account</h2>
+
+                <div class="d-flex justify-content-center mb-4">
+                    <div class="step-indicator" id="step-dots">
+                        <span class="step-dot active" data-step="1">1</span>
+                        <span class="step-line"></span>
+                        <span class="step-dot" data-step="2">2</span>
+                        <span class="step-line"></span>
+                        <span class="step-dot" data-step="3">3</span>
+                    </div>
+                </div>
+
+                <form method="POST" id="registerForm" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <!-- Step 1: Account Info -->
+                    <div class="form-step" id="step-1">
+                        <h5 style="color: var(--text-secondary)" class="mb-3">Account Information</h5>
+
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label") }}
+                            {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="Choose a username") }}
+                            {% for error in form.username.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="your@email.com") }}
+                            {% for error in form.email.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Min. 6 characters") }}
+                            {% for error in form.password.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.password2.label(class="form-label") }}
+                            {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else ""), placeholder="Repeat your password") }}
+                            {% for error in form.password2.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="nextStep(2)">Next &rarr;</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Personal Info -->
+                    <div class="form-step d-none" id="step-2">
+                        <h5 style="color: var(--text-secondary)" class="mb-3">Personal Details</h5>
+
+                        <div class="mb-3">
+                            {{ form.date_of_birth.label(class="form-label") }}
+                            {{ form.date_of_birth(class="form-control" + (" is-invalid" if form.date_of_birth.errors else ""), type="date") }}
+                            {% for error in form.date_of_birth.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.gender.label(class="form-label") }}
+                            {{ form.gender(class="form-select" + (" is-invalid" if form.gender.errors else "")) }}
+                            {% for error in form.gender.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                {{ form.height_cm.label(class="form-label") }}
+                                {{ form.height_cm(class="form-control" + (" is-invalid" if form.height_cm.errors else ""), placeholder="e.g. 175", step="0.1") }}
+                                {% for error in form.height_cm.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-6 mb-3">
+                                {{ form.weight_kg.label(class="form-label") }}
+                                {{ form.weight_kg(class="form-control" + (" is-invalid" if form.weight_kg.errors else ""), placeholder="e.g. 70", step="0.1") }}
+                                {% for error in form.weight_kg.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div id="bmi-preview" class="alert alert-info d-none mb-3">
+                            Your BMI: <strong id="bmi-value"></strong> — <span id="bmi-category"></span>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary flex-fill" onclick="prevStep(1)">&larr; Back</button>
+                            <button type="button" class="btn btn-primary flex-fill" onclick="nextStep(3)">Next &rarr;</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Fitness Profile -->
+                    <div class="form-step d-none" id="step-3">
+                        <h5 style="color: var(--text-secondary)" class="mb-3">Fitness Profile</h5>
+
+                        <div class="mb-3">
+                            {{ form.activity_level.label(class="form-label") }}
+                            {{ form.activity_level(class="form-select" + (" is-invalid" if form.activity_level.errors else "")) }}
+                            {% for error in form.activity_level.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.fitness_goal.label(class="form-label") }}
+                            {{ form.fitness_goal(class="form-select" + (" is-invalid" if form.fitness_goal.errors else "")) }}
+                            {% for error in form.fitness_goal.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="calorie-preview" class="alert alert-success d-none mb-3">
+                            Estimated daily calories: <strong id="calorie-value"></strong> kcal
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary flex-fill" onclick="prevStep(2)">&larr; Back</button>
+                            {{ form.submit(class="btn btn-primary flex-fill") }}
+                        </div>
+                    </div>
+                </form>
+
+                <p class="text-center mt-3 mb-0">
+                    Already have an account? <a href="{{ url_for('auth.login') }}">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStep = 1;
+
+    {% if form.errors %}
+        const errorFields = {{ form.errors.keys()|list|tojson }};
+        const step1Fields = ['username', 'email', 'password', 'password2'];
+        const step2Fields = ['date_of_birth', 'gender', 'height_cm', 'weight_kg'];
+        const step3Fields = ['activity_level', 'fitness_goal'];
+
+        if (errorFields.some(f => step3Fields.includes(f))) {
+            showStep(3);
+        } else if (errorFields.some(f => step2Fields.includes(f))) {
+            showStep(2);
+        }
+    {% endif %}
+
+    function showStep(step) {
+        document.querySelectorAll('.form-step').forEach(el => el.classList.add('d-none'));
+        document.getElementById('step-' + step).classList.remove('d-none');
+
+        document.querySelectorAll('.step-dot').forEach((dot, i) => {
+            const dotStep = i + 1;
+            dot.classList.remove('active', 'done');
+            if (dotStep === step) dot.classList.add('active');
+            else if (dotStep < step) dot.classList.add('done');
+        });
+
+        const lines = document.querySelectorAll('.step-line');
+        lines.forEach((line, i) => {
+            line.classList.toggle('done', i + 1 < step);
+        });
+
+        currentStep = step;
+    }
+
+    function nextStep(step) {
+        showStep(step);
+        if (step === 3) updateCaloriePreview();
+    }
+
+    function prevStep(step) {
+        showStep(step);
+    }
+
+    const heightInput = document.getElementById('height_cm');
+    const weightInput = document.getElementById('weight_kg');
+
+    function updateBmiPreview() {
+        const h = parseFloat(heightInput.value);
+        const w = parseFloat(weightInput.value);
+        const preview = document.getElementById('bmi-preview');
+
+        if (h > 0 && w > 0) {
+            const bmi = (w / ((h / 100) ** 2)).toFixed(1);
+            let cat = 'Obese';
+            if (bmi < 18.5) cat = 'Underweight';
+            else if (bmi < 25) cat = 'Normal';
+            else if (bmi < 30) cat = 'Overweight';
+
+            document.getElementById('bmi-value').textContent = bmi;
+            document.getElementById('bmi-category').textContent = cat;
+            preview.classList.remove('d-none');
+        } else {
+            preview.classList.add('d-none');
+        }
+    }
+
+    heightInput.addEventListener('input', updateBmiPreview);
+    weightInput.addEventListener('input', updateBmiPreview);
+
+    function updateCaloriePreview() {
+        const h = parseFloat(heightInput.value);
+        const w = parseFloat(weightInput.value);
+        const dobInput = document.getElementById('date_of_birth');
+        const gender = document.getElementById('gender').value;
+        const activity = document.getElementById('activity_level').value;
+        const preview = document.getElementById('calorie-preview');
+
+        if (!h || !w || !dobInput.value || !gender || !activity) {
+            preview.classList.add('d-none');
+            return;
+        }
+
+        const dob = new Date(dobInput.value);
+        const age = Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+
+        let bmr;
+        if (gender === 'male') {
+            bmr = 10 * w + 6.25 * h - 5 * age + 5;
+        } else {
+            bmr = 10 * w + 6.25 * h - 5 * age - 161;
+        }
+
+        const multipliers = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
+        const cal = Math.round(bmr * (multipliers[activity] || 1.2));
+
+        document.getElementById('calorie-value').textContent = cal;
+        preview.classList.remove('d-none');
+    }
+
+    document.getElementById('activity_level').addEventListener('change', updateCaloriePreview);
+</script>
+{% endblock %}
