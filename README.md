@@ -1,177 +1,177 @@
 # FitTracker
 
-A full-stack fitness tracking web application built with Flask and PostgreSQL. FitTracker helps users manage their workouts, track nutrition, monitor body composition, and stay on schedule with reminders.
+Уеб приложение за фитнес проследяване, изградено с Flask и PostgreSQL. FitTracker помага на потребителите да управляват тренировките си, да следят храненето, да наблюдават телесния състав и да спазват графика си с напомняния.
 
-## Features
+## Функционалности
 
-- **Workout Planner** — AI-generated weekly workout plans based on fitness goals, with exercise tracking and completion status
-- **Calorie Tracker** — Daily food logging with USDA API nutrition auto-lookup, macro tracking (protein/carbs/fat), weekly charts
-- **BMI Calculator** — Interactive body mass index calculator with SVG gauge visualization
-- **Progress Charts** — Chart.js graphs for weight trends, daily calories, and workout volume over time
-- **Reminders** — Configurable fitness reminders with background scheduler thread
-- **User Profiles** — Registration with body metrics, BMR/TDEE calculation, activity level tracking
+- **Планиране на тренировки** — Автоматично генерирани седмични програми според фитнес целите, с проследяване на завършени упражнения
+- **Калориен тракер** — Дневен дневник за храна с автоматично търсене на хранителни стойности чрез USDA API, проследяване на макроси (протеин/въглехидрати/мазнини), седмични графики
+- **BMI калкулатор** — Интерактивен калкулатор за индекс на телесна маса с SVG визуализация
+- **Графики за прогрес** — Chart.js графики за тегло, дневни калории и обем на тренировките
+- **Напомняния** — Настройваеми фитнес напомняния с фонов scheduler thread
+- **Потребителски профили** — Регистрация с телесни показатели, BMR/TDEE изчисление, ниво на активност
 
-## Architecture
+## Архитектура
 
-FitTracker uses **MVC (Model-View-Controller)** architecture via Flask Blueprints:
+FitTracker използва **MVC (Model-View-Controller)** архитектура чрез Flask Blueprints:
 
 ```
 app/
-├── __init__.py          # Application factory (Flask app creation)
-├── models.py            # Data layer — SQLAlchemy ORM models
+├── __init__.py          # Application factory (създаване на Flask приложение)
+├── models.py            # Data слой — SQLAlchemy ORM модели
 ├── routes/
-│   ├── auth.py          # Controller — authentication (login, register, logout)
-│   └── main.py          # Controller — main app routes (workout, calories, BMI, etc.)
-├── templates/           # View layer — Jinja2 HTML templates
-│   ├── base.html        # Base template with navbar
-│   ├── dashboard.html   # Dashboard with BMI gauge, calorie ring, profile
-│   ├── workout.html     # Weekly workout plan view
-│   ├── calories.html    # Calorie tracker with AI lookup
-│   ├── bmi.html         # BMI calculator with SVG gauge
-│   ├── progress.html    # Chart.js progress graphs
-│   └── reminders.html   # Reminder management
+│   ├── auth.py          # Controller — автентикация (вход, регистрация, изход)
+│   └── main.py          # Controller — основни маршрути (тренировки, калории, BMI и др.)
+├── templates/           # View слой — Jinja2 HTML шаблони
+│   ├── base.html        # Базов шаблон с навигация
+│   ├── dashboard.html   # Табло с BMI, калории, профил
+│   ├── workout.html     # Седмична тренировъчна програма
+│   ├── calories.html    # Калориен тракер с AI търсене
+│   ├── bmi.html         # BMI калкулатор с SVG скала
+│   ├── progress.html    # Chart.js графики за прогрес
+│   └── reminders.html   # Управление на напомняния
 ├── static/
-│   └── style.css        # Dark theme CSS
-├── services.py          # Business logic — workout generation service
-├── strategies.py        # Strategy pattern — workout configurations per goal
-├── exercises.py         # Exercise database and selector
-├── exceptions.py        # Custom exception hierarchy
-├── scheduler.py         # Background thread for reminder notifications
-└── forms.py             # Flask-WTF form definitions
+│   └── style.css        # Dark theme CSS стилове
+├── services.py          # Бизнес логика — сервиз за генериране на тренировки
+├── strategies.py        # Strategy pattern — конфигурации за различни цели
+├── exercises.py         # База данни с упражнения и селектор
+├── exceptions.py        # Йерархия от custom exceptions
+├── scheduler.py         # Фонов thread за напомняния (multithreading)
+└── forms.py             # Flask-WTF дефиниции на форми
 ```
 
-## Design Patterns
+## Шаблони за проектиране (Design Patterns)
 
 ### 1. Strategy Pattern (`app/strategies.py`)
-**Problem:** Different fitness goals (lose weight, gain muscle, maintain) require completely different workout configurations — rep ranges, rest times, cardio amounts, exercise selection.
+**Проблем:** Различните фитнес цели (отслабване, качване на мускулна маса, поддържане) изискват напълно различни конфигурации за тренировки — брой повторения, почивка, кардио, избор на упражнения.
 
-**Solution:** Each goal is encapsulated in its own strategy class implementing a common `WorkoutStrategy` interface. Adding a new goal means creating a new class without modifying existing code.
+**Решение:** Всяка цел е капсулирана в собствен клас-стратегия, имплементиращ общ интерфейс `WorkoutStrategy`. Добавянето на нова цел означава създаване на нов клас без промяна на съществуващия код.
 
 ### 2. Factory Pattern (`app/strategies.py` — `StrategyFactory`)
-**Problem:** Client code needs to create the right strategy based on a string input (user's selected goal) without knowing all concrete classes.
+**Проблем:** Клиентският код трябва да създаде правилната стратегия на база текстов вход (избраната от потребителя цел), без да познава всички конкретни класове.
 
-**Solution:** `StrategyFactory.create(goal)` maps goal strings to strategy instances, centralizing object creation.
+**Решение:** `StrategyFactory.create(goal)` свързва текстовите цели към инстанции на стратегии, централизирайки създаването на обекти.
 
 ### 3. Dependency Injection (`app/routes/main.py` + `app/services.py`)
-**Problem:** `WorkoutService` should not be tightly coupled to a specific strategy implementation.
+**Проблем:** `WorkoutService` не трябва да е тясно свързан с конкретна имплементация на стратегия.
 
-**Solution:** Strategy is injected into `WorkoutService(strategy=strategy)` at runtime. The service depends on the abstraction, not the concrete class.
+**Решение:** Стратегията се инжектира в `WorkoutService(strategy=strategy)` по време на изпълнение. Сервизът зависи от абстракцията, а не от конкретния клас.
 
-## SOLID Principles
+## SOLID принципи
 
-| Principle | Where Applied | Example |
-|-----------|--------------|---------|
-| **SRP** — Single Responsibility | `strategies.py`, `services.py` | Each strategy handles only its goal's config; `WorkoutService` only generates plans |
-| **OCP** — Open/Closed | `strategies.py` | New fitness goals = new strategy class, zero changes to existing code |
-| **LSP** — Liskov Substitution | `WorkoutStrategy` subclasses | Any strategy can replace another — `LoseWeightStrategy` and `GainMuscleStrategy` are interchangeable |
-| **ISP** — Interface Segregation | `WorkoutStrategy` ABC | Interface defines only `get_config()` — strategies aren't forced to implement unnecessary methods |
-| **DIP** — Dependency Inversion | `services.py` | `WorkoutService` depends on abstract `WorkoutStrategy`, not concrete implementations |
+| Принцип | Къде е приложен | Пример |
+|---------|----------------|--------|
+| **SRP** — Единствена отговорност | `strategies.py`, `services.py` | Всяка стратегия обработва само конфигурацията за своята цел; `WorkoutService` само генерира програми |
+| **OCP** — Отворен/Затворен | `strategies.py` | Нови фитнес цели = нов клас стратегия, нула промени в съществуващия код |
+| **LSP** — Заместване на Лисков | Подкласове на `WorkoutStrategy` | Всяка стратегия може да замести друга — `LoseWeightStrategy` и `GainMuscleStrategy` са взаимозаменяеми |
+| **ISP** — Разделяне на интерфейси | `WorkoutStrategy` ABC | Интерфейсът дефинира само `get_config()` — стратегиите не са принудени да имплементират ненужни методи |
+| **DIP** — Инверсия на зависимости | `services.py` | `WorkoutService` зависи от абстрактен `WorkoutStrategy`, не от конкретни имплементации |
 
-## OOP Principles
+## ООП принципи
 
-- **Inheritance:** `FitTrackerError` → `InvalidProfileError`, `WorkoutGenerationError`; `WorkoutStrategy` → concrete strategies
-- **Polymorphism:** Each strategy's `get_config()` returns different configurations; `bmi_category` property returns different strings
-- **Encapsulation:** User model hides password hashing (`set_password`/`check_password`); strategy internals hidden behind `get_config()`
-- **Abstraction:** `WorkoutStrategy` ABC defines interface; Flask blueprints abstract route grouping
+- **Наследяване:** `FitTrackerError` → `InvalidProfileError`, `WorkoutGenerationError`; `WorkoutStrategy` → конкретни стратегии
+- **Полиморфизъм:** `get_config()` на всяка стратегия връща различни конфигурации; `bmi_category` property връща различни низове
+- **Капсулация:** User моделът скрива хеширането на пароли (`set_password`/`check_password`); вътрешната логика на стратегиите е зад `get_config()`
+- **Абстракция:** `WorkoutStrategy` ABC дефинира интерфейс; Flask blueprints абстрахират групирането на маршрути
 
-## Technologies
+## Използвани технологии
 
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Python | 3.12+ | Backend language |
-| Flask | 3.1.1 | Web framework |
-| PostgreSQL | 17 | Relational database |
+| Технология | Версия | Предназначение |
+|-----------|--------|----------------|
+| Python | 3.12+ | Език за програмиране (backend) |
+| Flask | 3.1.1 | Уеб framework |
+| PostgreSQL | 17 | Релационна база данни |
 | SQLAlchemy | 2.x | ORM |
-| Flask-Migrate | 4.1.0 | Database migrations (Alembic) |
-| Flask-Login | 0.6.3 | Authentication & sessions |
-| Flask-WTF | 1.2.2 | Form handling & CSRF |
-| Chart.js | 4.4.4 | Client-side progress charts |
+| Flask-Migrate | 4.1.0 | Миграции на базата данни (Alembic) |
+| Flask-Login | 0.6.3 | Автентикация и сесии |
+| Flask-WTF | 1.2.2 | Обработка на форми и CSRF защита |
+| Chart.js | 4.4.4 | Графики от страна на клиента |
 | Bootstrap | 5.3.3 | Responsive CSS framework |
-| Docker | - | Containerization |
+| Docker | - | Контейнеризация |
 | GitHub Actions | - | CI/CD pipeline |
-| Gunicorn | 23.0.0 | Production WSGI server |
-| pytest | 8.3.4 | Unit & integration testing |
-| flake8 | 7.1.0 | Code linting |
-| pre-commit | 4.0.1 | Git hook management |
+| Gunicorn | 23.0.0 | Production WSGI сървър |
+| pytest | 8.3.4 | Unit и интеграционно тестване |
+| flake8 | 7.1.0 | Статичен анализ на кода |
+| pre-commit | 4.0.1 | Управление на Git hooks |
 
 ## API Endpoints
 
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST | `/register` | Multi-step registration form |
-| GET/POST | `/login` | User login |
-| GET | `/logout` | User logout |
+### Автентикация
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET/POST | `/register` | Многостъпкова регистрация |
+| GET/POST | `/login` | Вход в системата |
+| GET | `/logout` | Изход от системата |
 
-### Workout
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/workout` | View active workout plan |
-| GET | `/workout/regenerate` | Generate new workout plan |
-| POST | `/workout/toggle/<id>` | Toggle exercise completion |
-| POST | `/workout/reset-day/<id>` | Reset all exercises for a day |
-| GET | `/workout/history` | View past workout plans |
+### Тренировки
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/workout` | Преглед на активна тренировъчна програма |
+| GET | `/workout/regenerate` | Генериране на нова програма |
+| POST | `/workout/toggle/<id>` | Превключване на завършеност на упражнение |
+| POST | `/workout/reset-day/<id>` | Нулиране на всички упражнения за деня |
+| GET | `/workout/history` | Преглед на минали програми |
 
-### Calories
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/calories` | Daily calorie tracker with charts |
-| POST | `/calories/add` | Log a food entry |
-| POST | `/calories/delete/<id>` | Delete a food entry |
-| POST | `/calories/lookup` | AI nutrition lookup (USDA API) |
+### Калории
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/calories` | Дневен калориен тракер с графики |
+| POST | `/calories/add` | Добавяне на хранителен запис |
+| POST | `/calories/delete/<id>` | Изтриване на хранителен запис |
+| POST | `/calories/lookup` | AI търсене на хранителни стойности (USDA API) |
 
 ### BMI
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST | `/bmi` | BMI calculator with gauge |
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET/POST | `/bmi` | BMI калкулатор с визуална скала |
 
-### Progress
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/progress` | Weight, calorie, volume charts |
-| POST | `/progress/weight` | Log a weight entry |
+### Прогрес
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/progress` | Графики за тегло, калории и обем |
+| POST | `/progress/weight` | Записване на тегло |
 
-### Reminders
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/reminders` | View all reminders |
-| POST | `/reminders/add` | Create a reminder |
-| POST | `/reminders/toggle/<id>` | Toggle reminder ON/OFF |
-| POST | `/reminders/delete/<id>` | Delete a reminder |
-| GET | `/notifications` | Get pending notifications (from scheduler) |
+### Напомняния
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/reminders` | Преглед на всички напомняния |
+| POST | `/reminders/add` | Създаване на напомняне |
+| POST | `/reminders/toggle/<id>` | Превключване на напомняне ВКЛ/ИЗКЛ |
+| POST | `/reminders/delete/<id>` | Изтриване на напомняне |
+| GET | `/notifications` | Получаване на изчакващи нотификации (от scheduler) |
 
-## Database Schema
+## Схема на базата данни
 
-PostgreSQL with 7 normalized tables:
+PostgreSQL със 7 нормализирани таблици:
 
-- **users** — Account info, body metrics, fitness goals
-- **workout_plans** — Generated workout plans per user
-- **workout_days** — Days within a plan (Mon-Sun)
-- **workout_exercises** — Exercises within a day
-- **food_entries** — Daily food log entries with macros
-- **weight_logs** — Historical weight measurements
-- **reminders** — User reminder schedules
+- **users** — Информация за акаунт, телесни показатели, фитнес цели
+- **workout_plans** — Генерирани тренировъчни програми за потребител
+- **workout_days** — Дни в рамките на програма (Пон-Нед)
+- **workout_exercises** — Упражнения в рамките на ден
+- **food_entries** — Дневни записи за храна с макроси
+- **weight_logs** — Исторически измервания на тегло
+- **reminders** — Графици за напомняния на потребители
 
-ORM: SQLAlchemy with `lazy="dynamic"` for large collections and `lazy="select"` for small related sets. All migrations managed via Flask-Migrate (Alembic).
+ORM: SQLAlchemy с `lazy="dynamic"` за големи колекции и `lazy="select"` за малки свързани набори. Всички миграции се управляват чрез Flask-Migrate (Alembic).
 
-## Getting Started
+## Стартиране на проекта
 
-### Prerequisites
+### Изисквания
 - Python 3.12+
 - PostgreSQL 17+
-- Docker (optional)
+- Docker (по избор)
 
-### Option 1: Docker (Recommended)
+### Вариант 1: Docker (Препоръчителен)
 ```bash
 git clone https://github.com/TUES-2026-PBL-11-klas/SMES-FitTracker.git
 cd SMES-FitTracker
 docker-compose up --build
 ```
-App runs at http://localhost:5000
+Приложението работи на http://localhost:5000
 
-### Option 2: Local Development
+### Вариант 2: Локална разработка
 ```bash
-# Clone and install
+# Клониране и инсталиране
 git clone https://github.com/TUES-2026-PBL-11-klas/SMES-FitTracker.git
 cd SMES-FitTracker
 python -m venv venv
@@ -179,19 +179,19 @@ venv\Scripts\activate        # Windows
 source venv/bin/activate     # macOS/Linux
 pip install -r requirements.txt
 
-# Setup database
-cp .env.example .env         # Edit DATABASE_URL if needed
+# Настройка на базата данни
+cp .env.example .env         # Редактирайте DATABASE_URL ако е необходимо
 flask db upgrade
 
-# Run
+# Стартиране
 flask run --debug
 ```
 
-### Running Tests
+### Пускане на тестове
 ```bash
 pytest --cov=app --cov-report=term-missing -v
 ```
-Current coverage: **81%** (43 tests — unit + integration)
+Текущо покритие: **81%** (43 теста — unit + интеграционни)
 
 ### Pre-commit Hooks
 ```bash
@@ -203,28 +203,28 @@ pre-commit run --all-files
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-1. **Test** — Run pytest with PostgreSQL service container, enforce 50% coverage minimum
-2. **Lint** — Run flake8 code style checks
-3. **Docker** — Build and verify Docker image
+1. **Test** — Пускане на pytest с PostgreSQL service container, минимум 50% покритие
+2. **Lint** — Проверка за стил на кода с flake8
+3. **Docker** — Изграждане и верификация на Docker образ
 
-Triggers on push to main and feature branches, and on pull requests to main.
+Задейства се при push към main и feature branch-ове, и при pull requests към main.
 
-## Configuration & Secrets
+## Управление на конфигурация и тайни
 
-- Environment variables via `.env` file (never committed)
-- `.env.example` provided as template
-- `SECRET_KEY` for Flask sessions
-- `DATABASE_URL` for PostgreSQL connection
-- `.gitignore` excludes `.env`, `.coverage`, `__pycache__`, `venv/`
-- Pre-commit hooks detect private keys before commit
+- Променливи на средата чрез `.env` файл (никога не се качва в git)
+- `.env.example` предоставен като шаблон
+- `SECRET_KEY` за Flask сесии
+- `DATABASE_URL` за PostgreSQL връзка
+- `.gitignore` изключва `.env`, `.coverage`, `__pycache__`, `venv/`
+- Pre-commit hooks засичат частни ключове преди commit
 
 ## Multithreading
 
-Background reminder scheduler (`app/scheduler.py`):
-- **Daemon thread** runs alongside Flask, checking reminders every 60 seconds
-- **Thread-safe queue** with `threading.Lock` for notification passing between threads
-- **Producer-consumer pattern**: request threads add reminders (producer), scheduler thread checks and fires them (consumer), notification endpoint retrieves them
+Фонов scheduler за напомняния (`app/scheduler.py`):
+- **Daemon thread** работи паралелно с Flask, проверявайки напомняния на всеки 60 секунди
+- **Thread-safe опашка** с `threading.Lock` за предаване на нотификации между нишки
+- **Producer-consumer pattern**: нишки от заявки добавят напомняния (producer), scheduler нишката ги проверява и задейства (consumer), endpoint за нотификации ги извлича
 
-## License
+## Лиценз
 
-MIT License — see [LICENSE](LICENSE)
+MIT License — виж [LICENSE](LICENSE)
