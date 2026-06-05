@@ -694,3 +694,12 @@ def reminders_delete(reminder_id):
     db.session.delete(reminder)
     db.session.commit()
     return redirect(url_for("main.reminders"))
+
+
+@main_bp.route("/notifications")
+@login_required
+def notifications():
+    """Get pending notifications from background scheduler (multithreading demo)."""
+    from app.scheduler import get_notifications
+    notifs = get_notifications(current_user.id)
+    return jsonify(notifs)

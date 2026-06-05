@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, login-register, workout-planner]
+    branches: [main, login-register, workout-planner, calories-tracker, bmi-calculator, progress-reminders]
   pull_request:
     branches: [main]
 

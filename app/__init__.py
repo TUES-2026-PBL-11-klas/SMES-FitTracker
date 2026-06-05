@@ -31,4 +31,10 @@ def create_app():
     from app.routes.main import main_bp
     app.register_blueprint(main_bp)
 
+    # Start background reminder scheduler (multithreading)
+    import os
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        from app.scheduler import start_scheduler
+        start_scheduler(app)
+
     return app
