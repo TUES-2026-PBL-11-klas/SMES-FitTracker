@@ -16,7 +16,11 @@ from datetime import date, timedelta
 from flask import Blueprint, render_template, redirect, url_for, jsonify, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import WorkoutPlan, WorkoutDay, WorkoutExercise, FoodEntry
+from datetime import datetime, time as dt_time
+from app.models import (
+    WorkoutPlan, WorkoutDay, WorkoutExercise,
+    FoodEntry, WeightLog, Reminder,
+)
 from app.services import WorkoutService
 from app.strategies import StrategyFactory
 from app.exceptions import (
@@ -509,3 +513,184 @@ def calories_lookup():
         return jsonify(local_result)
 
     return jsonify({"error": "Food not found"}), 404
+
+
+# ─── Progress Charts ────────────────────────────────────────────────
+
+
+@main_bp.route("/progress")
+@login_required
+def progress():
+    """Show progress charts: weight, calories, workout volume."""
+    weeks = request.args.get("weeks", 4, type=int)
+    weeks = max(1, min(weeks, 52))
+    end_date = date.today()
+    start_date = end_date - timedelta(weeks=weeks)
+
+    # Weight data
+    weight_entries = (
+        WeightLog.query
+        .filter_by(user_id=current_user.id)
+        .filter(WeightLog.date >= start_date)
+        .order_by(WeightLog.date.asc())
+        .all()
+    )
+    weight_labels = [w.date.strftime("%d %b") for w in weight_entries]
+    weight_values = [w.weight_kg for w in weight_entries]
+
+    # Calorie data — daily totals
+    cal_data = []
+    d = start_date
+    while d <= end_date:
+        entries = FoodEntry.query.filter_by(
+            user_id=current_user.id, date=d
+        ).all()
+        total = sum(e.calories for e in entries)
+        if total > 0:
+            cal_data.append({"date": d.strftime("%d %b"), "val": total})
+        d += timedelta(days=1)
+    cal_labels = [c["date"] for c in cal_data]
+    cal_values = [c["val"] for c in cal_data]
+
+    # Workout volume — total sets * reps per week
+    volume_data = []
+    week_start = start_date - timedelta(days=start_date.weekday())
+    while week_start <= end_date:
+        week_end = week_start + timedelta(days=6)
+        plans = WorkoutPlan.query.filter_by(user_id=current_user.id).all()
+        total_volume = 0
+        for plan in plans:
+            for day in plan.days:
+                for ex in day.exercises:
+                    if ex.is_completed and ex.sets and ex.reps:
+                        total_volume += ex.sets * ex.reps
+        volume_data.append({
+            "label": week_start.strftime("%d %b"),
+            "val": total_volume,
+        })
+        week_start += timedelta(weeks=1)
+    vol_labels = [v["label"] for v in volume_data]
+    vol_values = [v["val"] for v in volume_data]
+
+    target_cal = current_user.daily_calories or 2000
+
+    return render_template(
+        "progress.html",
+        weeks=weeks,
+        today=date.today(),
+        weight_labels=json.dumps(weight_labels),
+        weight_values=json.dumps(weight_values),
+        cal_labels=json.dumps(cal_labels),
+        cal_values=json.dumps(cal_values),
+        cal_target=target_cal,
+        vol_labels=json.dumps(vol_labels),
+        vol_values=json.dumps(vol_values),
+    )
+
+
+@main_bp.route("/progress/weight", methods=["POST"])
+@login_required
+def progress_add_weight():
+    """Log a weight entry."""
+    weight = request.form.get("weight", type=float)
+    log_date = request.form.get("date", date.today().isoformat())
+
+    try:
+        entry_date = date.fromisoformat(log_date)
+    except ValueError:
+        entry_date = date.today()
+
+    if not weight or weight <= 0:
+        flash("Enter a valid weight.", "warning")
+        return redirect(url_for("main.progress"))
+
+    # Update or create entry for this date
+    existing = WeightLog.query.filter_by(
+        user_id=current_user.id, date=entry_date
+    ).first()
+    if existing:
+        existing.weight_kg = weight
+    else:
+        entry = WeightLog(
+            user_id=current_user.id,
+            date=entry_date,
+            weight_kg=weight,
+        )
+        db.session.add(entry)
+
+    # Also update user profile weight
+    current_user.weight_kg = weight
+    db.session.commit()
+    flash(f"Weight logged: {weight} kg", "success")
+    return redirect(url_for("main.progress"))
+
+
+# ─── Reminders ──────────────────────────────────────────────────────
+
+
+@main_bp.route("/reminders")
+@login_required
+def reminders():
+    """Show user reminders."""
+    user_reminders = (
+        Reminder.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Reminder.time.asc())
+        .all()
+    )
+    return render_template("reminders.html", reminders=user_reminders)
+
+
+@main_bp.route("/reminders/add", methods=["POST"])
+@login_required
+def reminders_add():
+    """Create a new reminder."""
+    title = request.form.get("title", "").strip()
+    reminder_type = request.form.get("type", "custom")
+    day = request.form.get("day", "everyday")
+    time_str = request.form.get("time", "08:00")
+
+    if not title:
+        flash("Enter a reminder title.", "warning")
+        return redirect(url_for("main.reminders"))
+
+    try:
+        reminder_time = datetime.strptime(time_str, "%H:%M").time()
+    except ValueError:
+        reminder_time = dt_time(8, 0)
+
+    reminder = Reminder(
+        user_id=current_user.id,
+        title=title,
+        reminder_type=reminder_type,
+        day_of_week=day,
+        time=reminder_time,
+    )
+    db.session.add(reminder)
+    db.session.commit()
+    flash(f"Reminder added: {title}", "success")
+    return redirect(url_for("main.reminders"))
+
+
+@main_bp.route("/reminders/toggle/<int:reminder_id>", methods=["POST"])
+@login_required
+def reminders_toggle(reminder_id):
+    """Toggle reminder active/inactive."""
+    reminder = Reminder.query.get_or_404(reminder_id)
+    if reminder.user_id != current_user.id:
+        return jsonify({"error": "Unauthorized"}), 403
+    reminder.is_active = not reminder.is_active
+    db.session.commit()
+    return jsonify({"active": reminder.is_active})
+
+
+@main_bp.route("/reminders/delete/<int:reminder_id>", methods=["POST"])
+@login_required
+def reminders_delete(reminder_id):
+    """Delete a reminder."""
+    reminder = Reminder.query.get_or_404(reminder_id)
+    if reminder.user_id != current_user.id:
+        return jsonify({"error": "Unauthorized"}), 403
+    db.session.delete(reminder)
+    db.session.commit()
+    return redirect(url_for("main.reminders"))

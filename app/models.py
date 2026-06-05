@@ -134,6 +134,41 @@ class FoodEntry(db.Model):
         return f"<FoodEntry {self.name} ({self.calories} kcal)>"
 
 
+class WeightLog(db.Model):
+    """Track daily weight measurements for progress charts."""
+    __tablename__ = "weight_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    weight_kg = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+
+    user = db.relationship("User", backref=db.backref("weight_logs", lazy="dynamic"))
+
+    def __repr__(self):
+        return f"<WeightLog {self.date}: {self.weight_kg}kg>"
+
+
+class Reminder(db.Model):
+    """User reminders for workouts, meals, weigh-ins."""
+    __tablename__ = "reminders"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    reminder_type = db.Column(db.String(20), nullable=False)  # workout, meal, weigh_in, custom
+    day_of_week = db.Column(db.String(10), nullable=False)  # monday..sunday or everyday
+    time = db.Column(db.Time, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+
+    user = db.relationship("User", backref=db.backref("reminders", lazy="dynamic"))
+
+    def __repr__(self):
+        return f"<Reminder {self.title} ({self.day_of_week} {self.time})>"
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))

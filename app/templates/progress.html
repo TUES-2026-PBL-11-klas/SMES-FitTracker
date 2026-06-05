@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %} — Progress{% endblock %}
+
+{% block content %}
+<div class="mt-3 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Progress Charts</h2>
+            <p style="color: var(--text-secondary); margin: 0">Track your fitness journey over time</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('main.progress', weeks=4) }}"
+               class="btn btn-sm {% if weeks == 4 %}btn-primary{% else %}btn-outline-secondary{% endif %}">4W</a>
+            <a href="{{ url_for('main.progress', weeks=8) }}"
+               class="btn btn-sm {% if weeks == 8 %}btn-primary{% else %}btn-outline-secondary{% endif %}">8W</a>
+            <a href="{{ url_for('main.progress', weeks=12) }}"
+               class="btn btn-sm {% if weeks == 12 %}btn-primary{% else %}btn-outline-secondary{% endif %}">12W</a>
+        </div>
+    </div>
+
+    <!-- Log Weight -->
+    <div class="prog-card mb-4">
+        <div class="prog-card-label">LOG WEIGHT</div>
+        <form method="POST" action="{{ url_for('main.progress_add_weight') }}" class="d-flex gap-3 align-items-end flex-wrap">
+            <input type="hidden" name="date" value="{{ today if today is defined else '' }}">
+            <div>
+                <label class="prog-input-label">Weight (kg)</label>
+                <input type="number" name="weight" class="form-control form-control-sm prog-input"
+                       value="{{ current_user.weight_kg }}" min="20" max="400" step="0.1" required
+                       style="width: 140px;">
+            </div>
+            <div>
+                <label class="prog-input-label">Date</label>
+                <input type="date" name="date" class="form-control form-control-sm prog-input"
+                       value="{{ today.isoformat() if today is defined else '' }}" style="width: 160px;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" style="height: 38px; padding: 0 1.5rem;">
+                + Log Weight
+            </button>
+        </form>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mb-4">
+        <!-- Weight Chart -->
+        <div class="col-md-6">
+            <div class="prog-card">
+                <div class="prog-card-label">WEIGHT TREND</div>
+                <div class="chart-wrap">
+                    <canvas id="weightChart"></canvas>
+                </div>
+                {% if not weight_values or weight_values == '[]' %}
+                <div class="chart-empty">Log your weight to see the trend</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Calories Chart -->
+        <div class="col-md-6">
+            <div class="prog-card">
+                <div class="prog-card-label">DAILY CALORIES</div>
+                <div class="chart-wrap">
+                    <canvas id="calChart"></canvas>
+                </div>
+                {% if not cal_values or cal_values == '[]' %}
+                <div class="chart-empty">Log food in Calorie Tracker to see data</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Workout Volume Chart -->
+    <div class="prog-card mb-4">
+        <div class="prog-card-label">WORKOUT VOLUME (sets x reps per week)</div>
+        <div class="chart-wrap" style="height: 220px;">
+            <canvas id="volChart"></canvas>
+        </div>
+        {% if not vol_values or vol_values == '[]' %}
+        <div class="chart-empty">Complete workout exercises to track volume</div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .prog-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.25rem;
+    }
+
+    .prog-card-label {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .prog-input-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }
+
+    .prog-input {
+        background: var(--bg-dark) !important;
+        border: 1px solid var(--border) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .prog-input:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+    }
+
+    .chart-wrap {
+        position: relative;
+        height: 260px;
+    }
+
+    .chart-empty {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        padding: 0.5rem 0;
+        margin-top: -0.5rem;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(42, 47, 66, 0.6)';
+    Chart.defaults.font.family = 'inherit';
+
+    const gridColor = 'rgba(42, 47, 66, 0.5)';
+
+    // Weight Chart
+    const weightLabels = {{ weight_labels | safe }};
+    const weightValues = {{ weight_values | safe }};
+
+    if (weightValues.length > 0) {
+        new Chart(document.getElementById('weightChart'), {
+            type: 'line',
+            data: {
+                labels: weightLabels,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weightValues,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#22c55e',
+                    pointBorderColor: '#1a1d2e',
+                    pointBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor } },
+                    y: {
+                        grid: { color: gridColor },
+                        ticks: { callback: v => v + ' kg' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Calories Chart
+    const calLabels = {{ cal_labels | safe }};
+    const calValues = {{ cal_values | safe }};
+    const calTarget = {{ cal_target }};
+
+    if (calValues.length > 0) {
+        new Chart(document.getElementById('calChart'), {
+            type: 'bar',
+            data: {
+                labels: calLabels,
+                datasets: [
+                    {
+                        label: 'Calories',
+                        data: calValues,
+                        backgroundColor: calValues.map(v =>
+                            v > calTarget ? 'rgba(239, 68, 68, 0.6)' : 'rgba(34, 197, 94, 0.6)'
+                        ),
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Target',
+                        data: calValues.map(() => calTarget),
+                        type: 'line',
+                        borderColor: 'rgba(245, 158, 11, 0.7)',
+                        borderDash: [6, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12 } } },
+                scales: {
+                    x: { grid: { color: gridColor } },
+                    y: {
+                        grid: { color: gridColor },
+                        beginAtZero: true,
+                        ticks: { callback: v => v + ' kcal' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Volume Chart
+    const volLabels = {{ vol_labels | safe }};
+    const volValues = {{ vol_values | safe }};
+
+    if (volValues.some(v => v > 0)) {
+        new Chart(document.getElementById('volChart'), {
+            type: 'bar',
+            data: {
+                labels: volLabels,
+                datasets: [{
+                    label: 'Volume (sets x reps)',
+                    data: volValues,
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor } },
+                    y: {
+                        grid: { color: gridColor },
+                        beginAtZero: true,
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

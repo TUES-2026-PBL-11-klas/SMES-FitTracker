@@ -17,7 +17,8 @@
                     <a class="nav-link" href="{{ url_for('main.workout') }}">Workout</a>
                     <a class="nav-link" href="{{ url_for('main.calories') }}">Calories</a>
                     <a class="nav-link" href="{{ url_for('main.bmi') }}">BMI</a>
-                    <a class="nav-link" href="{{ url_for('main.workout_history') }}">History</a>
+                    <a class="nav-link" href="{{ url_for('main.progress') }}">Progress</a>
+                    <a class="nav-link" href="{{ url_for('main.reminders') }}">Reminders</a>
                     <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
                 {% else %}
                     <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
