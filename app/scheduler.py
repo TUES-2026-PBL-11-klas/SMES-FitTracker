@@ -41,11 +41,6 @@ def get_notifications(user_id):
 def _check_reminders(app):
     """Background thread: periodically check for due reminders."""
     import time
-    DAY_MAP = {
-        "monday": 0, "tuesday": 1, "wednesday": 2,
-        "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6,
-    }
-
     logger.info("Reminder scheduler started (checking every 60s)")
 
     while True:
@@ -54,7 +49,6 @@ def _check_reminders(app):
 
             with app.app_context():
                 from app.models import Reminder
-                from app import db
 
                 now = datetime.now()
                 current_day = now.strftime("%A").lower()

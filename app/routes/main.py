@@ -556,7 +556,6 @@ def progress():
     volume_data = []
     week_start = start_date - timedelta(days=start_date.weekday())
     while week_start <= end_date:
-        week_end = week_start + timedelta(days=6)
         plans = WorkoutPlan.query.filter_by(user_id=current_user.id).all()
         total_volume = 0
         for plan in plans:
