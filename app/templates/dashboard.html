@@ -143,22 +143,32 @@
 
     <!-- Quick Actions -->
     <div class="row mt-3 g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <a href="{{ url_for('main.workout') }}" class="quick-action-card">
                 <div class="qa-icon">&#128170;</div>
                 <div>
                     <h5 class="mb-0">Workout Plan</h5>
-                    <p class="mb-0" style="color: var(--text-secondary)">View your personalized weekly training program</p>
+                    <p class="mb-0" style="color: var(--text-secondary)">View your weekly training program</p>
                 </div>
                 <span class="qa-arrow">&rarr;</span>
             </a>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+            <a href="{{ url_for('main.calories') }}" class="quick-action-card">
+                <div class="qa-icon">&#127860;</div>
+                <div>
+                    <h5 class="mb-0">Calorie Tracker</h5>
+                    <p class="mb-0" style="color: var(--text-secondary)">Log meals and track nutrition</p>
+                </div>
+                <span class="qa-arrow">&rarr;</span>
+            </a>
+        </div>
+        <div class="col-md-4">
             <a href="{{ url_for('main.workout_regenerate') }}" class="quick-action-card">
                 <div class="qa-icon">&#128260;</div>
                 <div>
                     <h5 class="mb-0">New Plan</h5>
-                    <p class="mb-0" style="color: var(--text-secondary)">Generate a fresh workout with different exercises</p>
+                    <p class="mb-0" style="color: var(--text-secondary)">Generate a fresh workout plan</p>
                 </div>
                 <span class="qa-arrow">&rarr;</span>
             </a>

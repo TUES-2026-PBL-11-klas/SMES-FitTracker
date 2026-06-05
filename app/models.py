@@ -114,6 +114,26 @@ class WorkoutExercise(db.Model):
     is_completed = db.Column(db.Boolean, default=False, nullable=False)
 
 
+class FoodEntry(db.Model):
+    __tablename__ = "food_entries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    meal_type = db.Column(db.String(20), nullable=False)  # breakfast, lunch, dinner, snack
+    name = db.Column(db.String(200), nullable=False)
+    calories = db.Column(db.Integer, nullable=False)
+    protein_g = db.Column(db.Float, default=0)
+    carbs_g = db.Column(db.Float, default=0)
+    fat_g = db.Column(db.Float, default=0)
+    created_at = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+
+    user = db.relationship("User", backref=db.backref("food_entries", lazy="dynamic"))
+
+    def __repr__(self):
+        return f"<FoodEntry {self.name} ({self.calories} kcal)>"
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
