@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %} — BMI Calculator{% endblock %}
+
+{% block content %}
+<div class="mt-3 mb-5">
+    <div class="text-center mb-4">
+        <h2 class="mb-1">BMI Calculator</h2>
+        <p style="color: var(--text-secondary); margin: 0">Calculate your Body Mass Index</p>
+    </div>
+
+    <div class="row justify-content-center g-4">
+        <!-- Calculator Form -->
+        <div class="col-md-5">
+            <div class="bmi-card">
+                <div class="bmi-card-label">ENTER YOUR DATA</div>
+                <form method="POST" action="{{ url_for('main.bmi') }}" id="bmiForm">
+                    <div class="mb-4">
+                        <label class="bmi-input-label">Height (cm)</label>
+                        <div class="bmi-input-wrap">
+                            <input type="number" name="height" id="heightInput"
+                                   class="form-control bmi-input"
+                                   placeholder="170"
+                                   value="{{ result.height if result else user_height }}"
+                                   min="50" max="300" step="0.1" required>
+                            <span class="bmi-input-unit">cm</span>
+                        </div>
+                        <input type="range" id="heightRange" class="bmi-slider"
+                               min="100" max="220" step="1"
+                               value="{{ result.height if result else user_height or 170 }}">
+                    </div>
+                    <div class="mb-4">
+                        <label class="bmi-input-label">Weight (kg)</label>
+                        <div class="bmi-input-wrap">
+                            <input type="number" name="weight" id="weightInput"
+                                   class="form-control bmi-input"
+                                   placeholder="70"
+                                   value="{{ result.weight if result else user_weight }}"
+                                   min="20" max="400" step="0.1" required>
+                            <span class="bmi-input-unit">kg</span>
+                        </div>
+                        <input type="range" id="weightRange" class="bmi-slider"
+                               min="30" max="200" step="1"
+                               value="{{ result.weight if result else user_weight or 70 }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 bmi-submit">
+                        Calculate BMI
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Result -->
+        <div class="col-md-5">
+            <div class="bmi-card">
+                <div class="bmi-card-label">YOUR RESULT</div>
+
+                {% if result %}
+                <div class="bmi-result-display">
+                    <div class="bmi-result-number" id="bmiValue">{{ result.bmi }}</div>
+                    <div class="bmi-result-badge
+                        {% if result.category == 'Normal' %}badge-normal
+                        {% elif result.category == 'Underweight' %}badge-under
+                        {% elif result.category == 'Overweight' %}badge-over
+                        {% else %}badge-obese{% endif %}">
+                        {{ result.category }}
+                    </div>
+                </div>
+
+                <!-- Gauge -->
+                <div class="bmi-gauge">
+                    <svg viewBox="0 0 300 160" class="bmi-gauge-svg">
+                        <!-- Background arcs (4 equal 45° segments, center 150,140, r=120) -->
+                        <!-- Underweight: -90° to -45° -->
+                        <path d="M30,140 A120,120 0 0,1 65,55" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round" opacity="0.3"/>
+                        <!-- Normal: -45° to 0° -->
+                        <path d="M65,55 A120,120 0 0,1 150,20" fill="none" stroke="#22c55e" stroke-width="18" stroke-linecap="round" opacity="0.3"/>
+                        <!-- Overweight: 0° to 45° -->
+                        <path d="M150,20 A120,120 0 0,1 235,55" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round" opacity="0.3"/>
+                        <!-- Obese: 45° to 90° -->
+                        <path d="M235,55 A120,120 0 0,1 270,140" fill="none" stroke="#ef4444" stroke-width="18" stroke-linecap="round" opacity="0.3"/>
+
+                        <!-- Active arc highlight -->
+                        {% if result.category == 'Underweight' %}
+                        <path d="M30,140 A120,120 0 0,1 65,55" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
+                        {% elif result.category == 'Normal' %}
+                        <path d="M65,55 A120,120 0 0,1 150,20" fill="none" stroke="#22c55e" stroke-width="18" stroke-linecap="round"/>
+                        {% elif result.category == 'Overweight' %}
+                        <path d="M150,20 A120,120 0 0,1 235,55" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+                        {% else %}
+                        <path d="M235,55 A120,120 0 0,1 270,140" fill="none" stroke="#ef4444" stroke-width="18" stroke-linecap="round"/>
+                        {% endif %}
+
+                        <!-- Needle (piecewise angle: each category = 45°) -->
+                        {% set bmi_val = result.bmi %}
+                        {% if bmi_val < 15 %}
+                            {% set angle = -90 %}
+                        {% elif bmi_val < 18.5 %}
+                            {% set angle = -90 + (bmi_val - 15) / 3.5 * 45 %}
+                        {% elif bmi_val < 25 %}
+                            {% set angle = -45 + (bmi_val - 18.5) / 6.5 * 45 %}
+                        {% elif bmi_val < 30 %}
+                            {% set angle = 0 + (bmi_val - 25) / 5 * 45 %}
+                        {% elif bmi_val <= 40 %}
+                            {% set angle = 45 + (bmi_val - 30) / 10 * 45 %}
+                        {% else %}
+                            {% set angle = 90 %}
+                        {% endif %}
+                        <line x1="150" y1="140" x2="150" y2="45"
+                              stroke="white" stroke-width="3" stroke-linecap="round"
+                              transform="rotate({{ angle }}, 150, 140)"/>
+                        <circle cx="150" cy="140" r="8" fill="white"/>
+
+                        <!-- Labels -->
+                        <text x="15" y="155" fill="#3b82f6" font-size="11" font-weight="600">15</text>
+                        <text x="38" y="42" fill="#94a3b8" font-size="11">18.5</text>
+                        <text x="138" y="12" fill="#94a3b8" font-size="11">25</text>
+                        <text x="238" y="42" fill="#94a3b8" font-size="11">30</text>
+                        <text x="268" y="155" fill="#ef4444" font-size="11" font-weight="600">40</text>
+                    </svg>
+                </div>
+
+                <!-- Info -->
+                <div class="bmi-info-grid">
+                    <div class="bmi-info-item">
+                        <span class="bmi-info-dot" style="background: #3b82f6;"></span>
+                        <span class="bmi-info-label">Underweight</span>
+                        <span class="bmi-info-range">&lt; 18.5</span>
+                    </div>
+                    <div class="bmi-info-item">
+                        <span class="bmi-info-dot" style="background: #22c55e;"></span>
+                        <span class="bmi-info-label">Normal</span>
+                        <span class="bmi-info-range">18.5 – 24.9</span>
+                    </div>
+                    <div class="bmi-info-item">
+                        <span class="bmi-info-dot" style="background: #f59e0b;"></span>
+                        <span class="bmi-info-label">Overweight</span>
+                        <span class="bmi-info-range">25 – 29.9</span>
+                    </div>
+                    <div class="bmi-info-item">
+                        <span class="bmi-info-dot" style="background: #ef4444;"></span>
+                        <span class="bmi-info-label">Obese</span>
+                        <span class="bmi-info-range">&ge; 30</span>
+                    </div>
+                </div>
+
+                {% else %}
+                <!-- Empty state -->
+                <div class="bmi-empty">
+                    <div class="bmi-empty-icon">
+                        <svg viewBox="0 0 300 160" class="bmi-gauge-svg" style="opacity: 0.3">
+                            <path d="M30,140 A120,120 0 0,1 65,55" fill="none" stroke="#3b82f6" stroke-width="18" stroke-linecap="round"/>
+                            <path d="M65,55 A120,120 0 0,1 150,20" fill="none" stroke="#22c55e" stroke-width="18" stroke-linecap="round"/>
+                            <path d="M150,20 A120,120 0 0,1 235,55" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+                            <path d="M235,55 A120,120 0 0,1 270,140" fill="none" stroke="#ef4444" stroke-width="18" stroke-linecap="round"/>
+                            <circle cx="150" cy="140" r="8" fill="white" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    <p class="bmi-empty-text">Enter your height and weight to calculate BMI</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bmi-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        height: 100%;
+    }
+
+    .bmi-card-label {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .bmi-input-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .bmi-input-wrap {
+        position: relative;
+    }
+
+    .bmi-input {
+        background: var(--bg-dark) !important;
+        border: 1px solid var(--border) !important;
+        color: var(--text-primary) !important;
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        padding: 0.75rem 3.5rem 0.75rem 1rem !important;
+        border-radius: 12px !important;
+        text-align: center;
+    }
+
+    .bmi-input:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
+    }
+
+    .bmi-input-unit {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* Range slider */
+    .bmi-slider {
+        width: 100%;
+        margin-top: 0.5rem;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        border-radius: 3px;
+        background: #2a2f42;
+        outline: none;
+    }
+
+    .bmi-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        border: 3px solid var(--bg-card);
+        box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+    }
+
+    .bmi-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        border: 3px solid var(--bg-card);
+    }
+
+    .bmi-submit {
+        padding: 0.85rem;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 12px;
+        margin-top: 0.5rem;
+    }
+
+    /* Result */
+    .bmi-result-display {
+        text-align: center;
+        padding: 1rem 0 0.5rem;
+    }
+
+    .bmi-result-number {
+        font-size: 4rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+
+    .bmi-result-badge {
+        display: inline-block;
+        padding: 0.4em 1.2em;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-normal {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-under {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-over {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-obese {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Gauge */
+    .bmi-gauge {
+        text-align: center;
+        padding: 0.5rem 0;
+    }
+
+    .bmi-gauge-svg {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    /* Info grid */
+    .bmi-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .bmi-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .bmi-info-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .bmi-info-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .bmi-info-range {
+        margin-left: auto;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+
+    /* Empty state */
+    .bmi-empty {
+        text-align: center;
+        padding: 2rem 0;
+    }
+
+    .bmi-empty-icon {
+        margin-bottom: 1rem;
+    }
+
+    .bmi-empty-text {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+</style>
+
+<script>
+    // Sync sliders with inputs
+    const heightInput = document.getElementById('heightInput');
+    const heightRange = document.getElementById('heightRange');
+    const weightInput = document.getElementById('weightInput');
+    const weightRange = document.getElementById('weightRange');
+
+    heightRange.addEventListener('input', () => { heightInput.value = heightRange.value; });
+    heightInput.addEventListener('input', () => { heightRange.value = heightInput.value; });
+    weightRange.addEventListener('input', () => { weightInput.value = weightRange.value; });
+    weightInput.addEventListener('input', () => { weightRange.value = weightInput.value; });
+</script>
+{% endblock %}

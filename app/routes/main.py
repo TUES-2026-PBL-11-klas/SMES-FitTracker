@@ -179,6 +179,50 @@ def workout_history():
     return render_template("workout_history.html", plans=plans)
 
 
+# ─── BMI Calculator ─────────────────────────────────────────────────
+
+
+@main_bp.route("/bmi", methods=["GET", "POST"])
+@login_required
+def bmi():
+    """BMI calculator — uses profile data or manual input."""
+    result = None
+
+    if request.method == "POST":
+        height = request.form.get("height", type=float)
+        weight = request.form.get("weight", type=float)
+
+        if not height or not weight or height <= 0 or weight <= 0:
+            flash("Enter valid height and weight.", "warning")
+            return redirect(url_for("main.bmi"))
+
+        height_m = height / 100
+        bmi_value = round(weight / (height_m ** 2), 1)
+
+        if bmi_value < 18.5:
+            category = "Underweight"
+        elif bmi_value < 25:
+            category = "Normal"
+        elif bmi_value < 30:
+            category = "Overweight"
+        else:
+            category = "Obese"
+
+        result = {
+            "bmi": bmi_value,
+            "category": category,
+            "height": height,
+            "weight": weight,
+        }
+
+    return render_template(
+        "bmi.html",
+        result=result,
+        user_height=current_user.height_cm,
+        user_weight=current_user.weight_kg,
+    )
+
+
 # ─── Calories Tracker ────────────────────────────────────────────────
 
 
